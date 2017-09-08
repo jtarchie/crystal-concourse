@@ -1,0 +1,46 @@
+resource_types:
+- name: pullrequest
+  type: docker-image
+  source:
+    repository: jtarchie/pr
+
+resources:
+- name: git-pr
+  type: git
+  source:
+    uri: git@github.com:jtarchie/github-pullrequest-resource
+- name: git-pull-requests
+  type: pullrequest
+  source:
+    access_token: ((github-access-token))
+    private_key: ((github-private-key))
+    repo: jtarchie/github-pullrequest-resource
+    base: master
+
+jobs:
+- name: tests
+  plan:
+  - get: git-pr
+    trigger: true
+  - task: rspec
+    privileged: true
+    config: &config
+      image_resource:
+        type: docker-image
+        source:
+          repository: jtarchie/pr
+          tag: test
+      platform: linux
+      inputs:
+      - name: git-pr
+      run:
+        path: sh
+        args: [ '-c', 'cd git-pr && bundle install && bundle exec rspec' ]
+- name: pr-tests
+  plan:
+  - get: git-pr
+    resource: git-pull-requests
+    trigger: true
+  - task: rspec
+    privileged: true
+    config: *config
